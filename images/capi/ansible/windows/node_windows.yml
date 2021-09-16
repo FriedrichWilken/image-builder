@@ -78,13 +78,16 @@
       when: load_additional_components | bool
     - include_role:
         name: debug
+
     - include_role:
         name: "{{ role }}"
       loop: "{{ custom_role_names.split() }}"
       loop_control:
         loop_var: role
       when: custom_role | default(false)|bool
-  
+
+    ## New roles ... 
+
   environment:
     HTTP_PROXY: "{{ http_proxy | default('') }}"
     HTTPS_PROXY: "{{ https_proxy | default('') }}"

@@ -4,12 +4,9 @@
       "boot_wait": "{{user `boot_wait`}}",
       "communicator": "winrm",
       "cpus": "{{user `cpu`}}",
-      "disk_adapter_type": "scsi",
+      "disk_adapter_type": "lsisas1068",
       "disk_size": "{{user `disk_size`}}",
       "disk_type_id": "{{user `disk_type_id`}}",
-      "floppy_dirs": [
-        "./packer/ova/windows/pvscsi"
-      ],
       "floppy_files": [
         "./packer/ova/windows/{{user `build_name`}}/autounattend.xml",
         "./packer/ova/windows/disable-network-discovery.cmd",
@@ -18,6 +15,7 @@
         "./packer/ova/windows/sysprep.ps1"
       ],
       "guest_os_type": "{{user `local_guest_os_type`}}",
+      "headless": "{{user `headless`}}",
       "iso_checksum": "{{user `iso_checksum` }}",
       "iso_urls": [
         "{{user `os_iso_url`}}"
@@ -32,12 +30,15 @@
       "vm_name": "{{user `build_version`}}",
       "vmdk_name": "{{user `build_version`}}",
       "vmx_data": {
-        "numvcpus": "4",
-        "scsi0.virtualDev": "pvscsi"
+        "RemoteDisplay.vnc.enabled": "false",
+        "RemoteDisplay.vnc.port": "5900"
       },
-      "winrm_password": "S3cr3t0!",
+      "vmx_remove_ethernet_interfaces": true,
+      "vnc_port_max": 5980,
+      "vnc_port_min": 5900,
+      "winrm_password": "vagrant",
       "winrm_timeout": "4h",
-      "winrm_username": "Administrator"
+      "winrm_username": "vagrant"
     },
     {
       "CPUs": "{{user `cpu`}}",
