@@ -1,4 +1,4 @@
-# Copyright 2019 The Kubernetes Authors.
+# Copyright 2021 The Kubernetes Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -47,7 +47,7 @@ version: ## Display version of image-builder
 
 .PHONY: deps
 deps: ## Installs/checks all dependencies
-deps: deps-ami deps-azure deps-do deps-gce deps-ova deps-qemu deps-raw
+deps: deps-ami deps-azure deps-do deps-gce deps-ova deps-qemu deps-raw deps-vbox
 
 .PHONY: deps-ami
 deps-ami: ## Installs/checks dependencies for AMI builds
@@ -66,7 +66,6 @@ deps-azure:
 	hack/ensure-jq.sh
 	hack/ensure-azure-cli.sh
 	hack/ensure-goss.sh
-
 
 .PHONY: deps-do
 deps-do: ## Installs/checks dependencies for DigitalOcean builds
@@ -100,6 +99,15 @@ deps-raw: ## Installs/checks dependencies for RAW builds
 deps-raw:
 	hack/ensure-ansible.sh
 	hack/ensure-packer.sh
+
+.PHONY: deps-vbox
+deps-vbox: ## Installs/checks dependencies for VirtualBox builds
+deps-vbox:
+	hack/ensure-ansible.sh
+	hack/ensure-ansible-windows.sh
+	hack/ensure-packer.sh
+	hack/ensure-goss.sh
+
 
 ## --------------------------------------
 ## Container variables
@@ -235,6 +243,7 @@ NODE_OVA_VSPHERE_CLONE_BUILD_NAMES		:=	$(addprefix node-ova-vsphere-clone-,$(PLA
 HAPROXY_OVA_LOCAL_BUILD_NAMES			:=	$(addprefix haproxy-ova-local-,$(PHOTON_VERSIONS))
 HAPROXY_OVA_ESX_BUILD_NAMES			:=	$(addprefix haproxy-ova-esx-,$(PHOTON_VERSIONS))
 HAPROXY_OVA_VSPHERE_BUILD_NAMES		:=	$(addprefix haproxy-ova-vsphere-,$(PHOTON_VERSIONS))
+NODE_VBOX_LOCAL_BUILD_NAMES			:= $(addprefix node-vbox-local-,$(WINDOWS_VERSIONS))
 
 AMI_BUILD_NAMES			   ?= ami-centos-7 ami-ubuntu-1804 ami-ubuntu-2004 ami-amazon-2 ami-flatcar ami-windows-2019 ami-windows-2004
 GCE_BUILD_NAMES			   ?= gce-ubuntu-1804 ## gce-ubuntu-2004
@@ -282,6 +291,9 @@ QEMU_BUILD_TARGETS	:= $(addprefix build-,$(QEMU_BUILD_NAMES))
 QEMU_VALIDATE_TARGETS	:= $(addprefix validate-,$(QEMU_BUILD_NAMES))
 RAW_BUILD_TARGETS      := $(addprefix build-,$(RAW_BUILD_NAMES))
 RAW_VALIDATE_TARGETS   := $(addprefix validate-,$(RAW_BUILD_NAMES))
+NODE_VBOX_BUILD_TARGETS      := $(addprefix build-,$(NODE_VBOX_LOCAL_BUILD_NAMES))
+NODE_VBOX_VALIDATE_TARGETS   := $(addprefix validate-,$(NODE_VBOX_LOCAL_BUILD_NAMES))
+
 
 .PHONY: $(NODE_OVA_LOCAL_BUILD_TARGETS)
 $(NODE_OVA_LOCAL_BUILD_TARGETS): deps-ova
@@ -306,7 +318,6 @@ $(NODE_OVA_ESX_BUILD_TARGETS): deps-ova
 .PHONY: $(NODE_OVA_VSPHERE_BUILD_TARGETS)
 $(NODE_OVA_VSPHERE_BUILD_TARGETS): deps-ova
 	packer build $(if $(findstring windows,$@),$(PACKER_WINDOWS_NODE_FLAGS),$(PACKER_NODE_FLAGS))  -var-file="packer/ova/packer-common.json" -var-file="$(abspath packer/ova/$(subst build-node-ova-vsphere-,,$@).json)" -var-file="packer/ova/vsphere.json" -except=esx -except=local -only=vsphere-iso $(ABSOLUTE_PACKER_VAR_FILES) -only=vsphere packer/ova/packer-$(if $(findstring windows,$@),windows,node).json
-
 
 .PHONY: $(NODE_OVA_VSPHERE_BASE_BUILD_TARGETS)
 $(NODE_OVA_VSPHERE_BASE_BUILD_TARGETS): deps-ova
@@ -404,6 +415,14 @@ $(RAW_BUILD_TARGETS): deps-raw
 $(RAW_VALIDATE_TARGETS): deps-raw
 	packer validate $(PACKER_NODE_FLAGS) -var-file="$(abspath packer/raw/$(subst validate-,,$@).json)" $(ABSOLUTE_PACKER_VAR_FILES) -except=flatcar packer/raw/packer.json
 
+.PHONY: $(NODE_VBOX_BUILD_TARGETS)
+$(NODE_VBOX_BUILD_TARGETS): deps-vbox
+	packer build $(if $(findstring windows,$@),$(PACKER_WINDOWS_NODE_FLAGS),$(PACKER_NODE_FLAGS)) -var-file="packer/vbox/packer-common.json" -var-file="$(abspath packer/vbox/$(subst build-node-vbox-local-,,$@).json)" -except=esx -except=vsphere -only=virtualbox-iso $(ABSOLUTE_PACKER_VAR_FILES) packer/vbox/packer-$(if $(findstring windows,$@),windows).json
+
+.PHONY: $(NODE_VBOX_VALIDATE_TARGETS)
+$(NODE_VBOX_VALIDATE_TARGETS): deps-vbox
+	packer validate $(if $(findstring windows,$@),$(PACKER_WINDOWS_NODE_FLAGS),$(PACKER_NODE_FLAGS)) -var-file="packer/ova/packer-common.json" -var-file="$(abspath packer/vbox/$(subst validate-node-vbox-local-,,$@).json)" -except=esx -except=vsphere -only=virtualbox-iso $(ABSOLUTE_PACKER_VAR_FILES) packer/vbox/packer-$(if $(findstring windows,$@),windows).json
+
 
 ## --------------------------------------
 ## Dynamic clean targets
@@ -423,10 +442,15 @@ QEMU_CLEAN_TARGETS := $(subst build-,clean-,$(QEMU_BUILD_TARGETS))
 $(QEMU_CLEAN_TARGETS):
 	rm -fr output/$(subst clean-qemu-,,$@)-kube*
 
-RAW_CLEAN_TARGETS := $(subst build-,clean-,$(RAW_CLEAN_TARGETS))
+RAW_CLEAN_TARGETS := $(subst build-,clean-,$(RAW_BUILD_TARGETS))
 .PHONY: $(RAW_CLEAN_TARGETS)
 $(RAW_CLEAN_TARGETS):
 	rm -fr output/$(subst clean-raw-,,$@)-kube*
+
+VBOX_CLEAN_TARGETS := $(subst build-,clean-,$(NODE_VBOX_BUILD_TARGETS))
+.PHONY: $(VBOX_CLEAN_TARGETS)
+$(VBOX_CLEAN_TARGETS):
+	rm -fr output/$(subst clean-node-vbox-local-,,$@)-kube*
 
 ## --------------------------------------
 ## Document dynamic build targets
@@ -536,6 +560,9 @@ build-raw-ubuntu-1804: ## Builds Ubuntu 18.04 RAW image
 build-raw-ubuntu-2004: ## Builds Ubuntu 20.04 RAW image
 build-raw-all: $(RAW_BUILD_TARGETS) ## Builds all RAW images
 
+build-node-vbox-local-windows-2019: ## Builds for Windows Server 2019 Node VirtualBox w local hypervisor
+
+
 ## --------------------------------------
 ## Document dynamic validate targets
 ## --------------------------------------
@@ -605,6 +632,8 @@ validate-raw-ubuntu-1804: ## Validates Ubuntu 18.04 RAW image packer config
 validate-raw-ubuntu-2004: ## Validates Ubuntu 20.04 RAW image packer config
 validate-raw-all: $(RAW_VALIDATE_TARGETS) ## Validates all RAW Packer config
 
+validate-node-vbox-local-windows-2019: ## Validates Windows Server 2019 Node VirtualBox Packer config w local hypervisor
+
 validate-all: validate-ami-all \
 	validate-azure-all \
 	validate-do-all \
@@ -635,6 +664,11 @@ clean-qemu: $(QEMU_CLEAN_TARGETS)
 .PHONY: clean-raw
 clean-raw: ## Removes all raw image output directories (see NOTE at top of help)
 clean-raw: $(RAW_CLEAN_TARGETS)
+
+.PHONY: clean-vbox
+clean-vbox: ## Removes all vbox image output directories (see NOTE at top of help)
+clean-vbox: $(VBOX_CLEAN_TARGETS)
+
 
 .PHONY: clean-packer-cache
 clean-packer-cache: ## Removes the packer cache
