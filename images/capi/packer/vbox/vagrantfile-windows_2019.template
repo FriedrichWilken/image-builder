@@ -9,7 +9,8 @@ Vagrant.configure("2") do |config|
     config.vm.communicator = "winrm"
 
     # Admin user name and password
-    config.winrm.username = "vagrant"
+    ## CREDENTIALS
+    config.winrm.username = "vagrant" 
     config.winrm.password = "vagrant"
 
     config.vm.guest = :windows
