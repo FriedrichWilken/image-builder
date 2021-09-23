@@ -77,8 +77,8 @@ Installation Notes:
             </ImageInstall>
             <UserData>
                 <AcceptEula>true</AcceptEula>
-                <FullName>Administrator</FullName>
-                <Organization>Organization</Organization>
+                <FullName>Vagrant</FullName>
+                <Organization>Vagrant</Organization>
                 <!-- <ProductKey> -->
                 <!--     <Key>N69G4-B89J2-4G8F4-WWYCC-J464C</Key> -->
                 <!--     <WillShowUI>OnError</WillShowUI> -->
@@ -196,7 +196,7 @@ Installation Notes:
                     <Description>Disable Hibernation Mode</Description>
                 </SynchronousCommand>
                 <SynchronousCommand wcm:action="add">
-                    <CommandLine>cmd.exe /c wmic useraccount where "name='Administrator'" set PasswordExpires=FALSE</CommandLine>
+                    <CommandLine>cmd.exe /c wmic useraccount where "name='vagrant'" set PasswordExpires=FALSE</CommandLine>
                     <Order>9</Order>
                     <Description>Disable password expiration for Administrator user</Description>
                 </SynchronousCommand>
@@ -238,10 +238,14 @@ Installation Notes:
                 </AdministratorPassword>
                 <LocalAccounts>
                     <LocalAccount wcm:action="add">
-                        <Description>Administrator</Description>
-                        <DisplayName>Administrator</DisplayName>
-                        <Group>Administrators</Group>
+                        <Password>
+                            <Value>vagrant</Value>
+                            <PlainText>true</PlainText>
+                        </Password>
+                        <Group>administrators</Group>
+                        <DisplayName>Vagrant</DisplayName>
                         <Name>vagrant</Name>
+                        <Description>Vagrant User</Description>
                     </LocalAccount>
                 </LocalAccounts>
             </UserAccounts>
